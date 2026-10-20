@@ -6,7 +6,7 @@ Projeto complementar: [painel de leads e conversões com cards HTML dinâmicos](
 
 ## O desafio
 
-Consolidar contatos e conversões, reduzir reprocessamentos duplicados e manter o relatório disponível para análise sem repetir a preparação manual a cada consulta. Segundo o autor, o processo anterior exigia quase um dia de trabalho e passou a ser consultado em poucos segundos. Esse ganho é um relato operacional; não foi medido nesta preparação.
+Consolidar contatos e conversões, reduzir reprocessamentos duplicados e manter o relatório disponível para análise sem repetir a preparação manual a cada consulta. Na operação que acompanhei, a preparação anterior exigia quase um dia de trabalho; com a solução, passei a consultar o relatório em poucos segundos. Essa observação não foi medida de forma independente nesta publicação.
 
 ## Como o fluxo trabalha
 
