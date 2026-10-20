@@ -1,0 +1,46 @@
+{
+  "escopo": "Testes JavaScript e estrutura JSON; sem n8n, SQL ou APIs reais",
+  "total": 10,
+  "testes": [
+    {
+      "teste": "Sintaxe dos quatro nós Code",
+      "resultado": "passou"
+    },
+    {
+      "teste": "Contato: arrays, campos opcionais e data de conversão",
+      "resultado": "passou"
+    },
+    {
+      "teste": "Entrada sem leads produz listas vazias",
+      "resultado": "passou"
+    },
+    {
+      "teste": "Eventos: repetição da mesma chave é removida na execução",
+      "resultado": "passou"
+    },
+    {
+      "teste": "Eventos: novo timestamp gera outra chave",
+      "resultado": "passou"
+    },
+    {
+      "teste": "Eventos sem UUID ou sem identificador são descartados",
+      "resultado": "passou"
+    },
+    {
+      "teste": "Geradores SQL: lotes vazios não geram consulta",
+      "resultado": "passou"
+    },
+    {
+      "teste": "SQL de contatos: JSON com apóstrofo preservado e MERGE por UUID",
+      "resultado": "passou"
+    },
+    {
+      "teste": "SQL de eventos: hash e MERGE por event_key",
+      "resultado": "passou"
+    },
+    {
+      "teste": "Template: estrutura, proteção de integrações e destinos das conexões",
+      "resultado": "passou"
+    }
+  ]
+}

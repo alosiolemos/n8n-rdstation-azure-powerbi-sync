@@ -1,0 +1,405 @@
+{
+  "name": "RD Station → Azure SQL → Power BI — template público",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const leads = $json.body?.leads ?? [];\n\nfunction toText(value) {\n  if (value === null || value === undefined) return null;\n\n  if (Array.isArray(value)) {\n    return value\n      .map(v => typeof v === 'object' ? JSON.stringify(v) : String(v))\n      .filter(Boolean)\n      .join(', ') || null;\n  }\n\n  if (typeof value === 'object') {\n    return JSON.stringify(value);\n  }\n\n  return String(value);\n}\n\nreturn leads.map(c => {\n\n  const cf = c.custom_fields ?? {};\n\n  return {\n    json: {\n\n      // =============================================\n      // IDENTIFICAÇÃO\n      // =============================================\n\n      uuid: c.uuid ?? null,\n\n      name: c.name ?? null,\n      email: c.email ?? null,\n\n      phone: c.phone ?? null,\n      personal_phone: c.personal_phone ?? null,\n      mobile_phone: c.mobile_phone ?? null,\n\n      job_title: c.job_title ?? null,\n\n      // Não existem no webhook atual\n      birthdate: null,\n\n      bio: c.bio ?? null,\n      website: c.website ?? null,\n\n      city: c.city ?? null,\n      state: c.state ?? null,\n\n      // Não existem no webhook atual\n      country: null,\n\n      twitter: null,\n      facebook: null,\n      linkedin: null,\n\n      tags: toText(c.tags),\n\n      // Não existe no webhook atual\n      extra_emails: null,\n\n      // =============================================\n      // LEGAL BASIS\n      // Não vem nesse webhook\n      // =============================================\n\n      legal_basis_category: null,\n      legal_basis_type: null,\n      legal_basis_status: null,\n\n      // =============================================\n      // LINKS API\n      // Não precisamos consultar novamente o contato\n      // =============================================\n\n      self_uuid_url: null,\n      self_email_url: null,\n      self_phone_url: null,\n\n      events_url: null,\n      funnel_url: null,\n\n      // =============================================\n      // DATAS\n      // =============================================\n\n      created_at:\n        c.created_at ?? null,\n\n      last_conversion_date:\n        c.last_conversion?.created_at ??\n        c.last_conversion?.content?.event_timestamp ??\n        null,\n\n      // =============================================\n      // CAMPOS PERSONALIZADOS\n      // Mapeados para as colunas atuais do Azure\n      // =============================================\n\n      cf_ja_e_cliente_demo:\n        toText(cf[\"Já é cliente DEMO?\"]),\n\n      cf_ferramenta:\n        toText(cf[\"Ferramenta\"]),\n\n      cf_procura:\n        toText(cf[\"Procura\"]),\n\n      cf_origem_do_lead_legado:\n        toText(cf[\"Origem do lead - Legado\"]),\n\n      cf_agendamento:\n        toText(cf[\"Agendamento\"]),\n\n      cf_origem_do_lead:\n        toText(cf[\"Origem lead\"]),\n\n      cf_mensagem:\n        toText(cf[\"Mensagem\"]),\n\n      cf_qual_produto_da_demo_mais_te_interessou:\n        toText(cf[\"Qual produto da DEMO mais te interessou?\"]),\n\n      cf_url_do_arquivo:\n        toText(cf[\"URL do arquivo\"]),\n\n      cf_informacao_importante:\n        null,\n\n      cf_canal:\n        toText(cf[\"Canal\"]),\n\n      cf_cargo:\n        toText(cf[\"Cargo:*\"]),\n\n      cf_consultor_a:\n        toText(cf[\"Responsável\"]),\n\n      cf_voce_ja_conhece_a_demo:\n        toText(cf[\"Qual é o seu vínculo com a DEMO?\"]),\n\n      cf_obs:\n        toText(cf[\"Obs\"]),\n\n      cf_segmentos:\n        toText(cf[\"Segmentos\"]),\n\n      cf_totem_segmento:\n        toText(cf[\"segmento\"]),\n\n      cf_hub_id_do_registro:\n        toText(cf[\"Hub_Pipedrive\"]),\n\n      cf_observacao_hub:\n        toText(cf[\"Observação - HUB\"])\n\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -176
+      ],
+      "id": "4f9e80f7-fca9-4cc1-9008-e9daabd5c117",
+      "name": "Normalizar Contatos"
+    },
+    {
+      "parameters": {
+        "jsCode": "const registros = $input.all().map(item => item.json);\n\nif (registros.length === 0) {\n  return [];\n}\n\nconst json = JSON.stringify(registros)\n  .replace(/'/g, \"''\");\n\nconst query = `\nDECLARE @json NVARCHAR(MAX) = N'${json}';\n\n;WITH RawData AS\n(\n    SELECT *\n    FROM OPENJSON(@json)\n    WITH\n    (\n        uuid NVARCHAR(100) '$.uuid',\n\n        name NVARCHAR(500) '$.name',\n        email NVARCHAR(500) '$.email',\n\n        phone NVARCHAR(200) '$.phone',\n        personal_phone NVARCHAR(200) '$.personal_phone',\n        mobile_phone NVARCHAR(200) '$.mobile_phone',\n\n        job_title NVARCHAR(500) '$.job_title',\n        birthdate NVARCHAR(100) '$.birthdate',\n\n        bio NVARCHAR(MAX) '$.bio',\n        website NVARCHAR(MAX) '$.website',\n\n        city NVARCHAR(500) '$.city',\n        state NVARCHAR(300) '$.state',\n        country NVARCHAR(300) '$.country',\n\n        twitter NVARCHAR(MAX) '$.twitter',\n        facebook NVARCHAR(MAX) '$.facebook',\n        linkedin NVARCHAR(MAX) '$.linkedin',\n\n        tags NVARCHAR(MAX) '$.tags',\n        extra_emails NVARCHAR(MAX) '$.extra_emails',\n\n        legal_basis_category NVARCHAR(500) '$.legal_basis_category',\n        legal_basis_type NVARCHAR(500) '$.legal_basis_type',\n        legal_basis_status NVARCHAR(500) '$.legal_basis_status',\n\n        self_uuid_url NVARCHAR(MAX) '$.self_uuid_url',\n        self_email_url NVARCHAR(MAX) '$.self_email_url',\n        self_phone_url NVARCHAR(MAX) '$.self_phone_url',\n\n        events_url NVARCHAR(MAX) '$.events_url',\n        funnel_url NVARCHAR(MAX) '$.funnel_url',\n\n        created_at NVARCHAR(100) '$.created_at',\n        last_conversion_date NVARCHAR(100) '$.last_conversion_date',\n\n        cf_ja_e_cliente_demo NVARCHAR(MAX) '$.cf_ja_e_cliente_demo',\n        cf_ferramenta NVARCHAR(MAX) '$.cf_ferramenta',\n        cf_procura NVARCHAR(MAX) '$.cf_procura',\n        cf_origem_do_lead_legado NVARCHAR(MAX) '$.cf_origem_do_lead_legado',\n        cf_agendamento NVARCHAR(MAX) '$.cf_agendamento',\n        cf_origem_do_lead NVARCHAR(MAX) '$.cf_origem_do_lead',\n        cf_mensagem NVARCHAR(MAX) '$.cf_mensagem',\n\n        cf_qual_produto_da_demo_mais_te_interessou\n            NVARCHAR(MAX)\n            '$.cf_qual_produto_da_demo_mais_te_interessou',\n\n        cf_url_do_arquivo NVARCHAR(MAX) '$.cf_url_do_arquivo',\n        cf_informacao_importante NVARCHAR(MAX) '$.cf_informacao_importante',\n        cf_canal NVARCHAR(MAX) '$.cf_canal',\n        cf_cargo NVARCHAR(MAX) '$.cf_cargo',\n        cf_consultor_a NVARCHAR(MAX) '$.cf_consultor_a',\n        cf_voce_ja_conhece_a_demo NVARCHAR(MAX) '$.cf_voce_ja_conhece_a_demo',\n        cf_obs NVARCHAR(MAX) '$.cf_obs',\n        cf_segmentos NVARCHAR(MAX) '$.cf_segmentos',\n        cf_totem_segmento NVARCHAR(MAX) '$.cf_totem_segmento',\n        cf_hub_id_do_registro NVARCHAR(MAX) '$.cf_hub_id_do_registro',\n        cf_observacao_hub NVARCHAR(MAX) '$.cf_observacao_hub'\n    )\n),\n\nSourceData AS\n(\n    SELECT\n        TRY_CONVERT(UNIQUEIDENTIFIER, uuid) AS uuid,\n\n        name,\n        email,\n\n        phone,\n        personal_phone,\n        mobile_phone,\n\n        job_title,\n        TRY_CONVERT(DATE, birthdate) AS birthdate,\n\n        bio,\n        website,\n\n        city,\n        state,\n        country,\n\n        twitter,\n        facebook,\n        linkedin,\n\n        tags,\n        extra_emails,\n\n        legal_basis_category,\n        legal_basis_type,\n        legal_basis_status,\n\n        self_uuid_url,\n        self_email_url,\n        self_phone_url,\n\n        events_url,\n        funnel_url,\n\n        TRY_CONVERT(DATETIMEOFFSET(3), created_at)\n            AS created_at,\n\n        TRY_CONVERT(DATETIMEOFFSET(3), last_conversion_date)\n            AS last_conversion_date,\n\n        cf_ja_e_cliente_demo,\n        cf_ferramenta,\n        cf_procura,\n        cf_origem_do_lead_legado,\n        cf_agendamento,\n        cf_origem_do_lead,\n        cf_mensagem,\n        cf_qual_produto_da_demo_mais_te_interessou,\n        cf_url_do_arquivo,\n        cf_informacao_importante,\n        cf_canal,\n        cf_cargo,\n        cf_consultor_a,\n        cf_voce_ja_conhece_a_demo,\n        cf_obs,\n        cf_segmentos,\n        cf_totem_segmento,\n        cf_hub_id_do_registro,\n        cf_observacao_hub,\n\n        ROW_NUMBER() OVER\n        (\n            PARTITION BY uuid\n            ORDER BY\n                TRY_CONVERT(\n                    DATETIMEOFFSET(3),\n                    last_conversion_date\n                ) DESC\n        ) AS rn\n\n    FROM RawData\n)\n\nMERGE [Landing].[RD_Contacts] AS T\n\nUSING\n(\n    SELECT *\n    FROM SourceData\n    WHERE\n        uuid IS NOT NULL\n        AND rn = 1\n) AS S\n\nON T.uuid = S.uuid\n\nWHEN MATCHED THEN\n\nUPDATE SET\n\n    T.name = S.name,\n    T.email = S.email,\n\n    T.phone = S.phone,\n    T.personal_phone = S.personal_phone,\n    T.mobile_phone = S.mobile_phone,\n\n    T.job_title = S.job_title,\n    T.birthdate = S.birthdate,\n\n    T.bio = S.bio,\n    T.website = S.website,\n\n    T.city = S.city,\n    T.state = S.state,\n    T.country = S.country,\n\n    T.twitter = S.twitter,\n    T.facebook = S.facebook,\n    T.linkedin = S.linkedin,\n\n    T.tags = S.tags,\n    T.extra_emails = S.extra_emails,\n\n    T.legal_basis_category = S.legal_basis_category,\n    T.legal_basis_type = S.legal_basis_type,\n    T.legal_basis_status = S.legal_basis_status,\n\n    T.self_uuid_url = S.self_uuid_url,\n    T.self_email_url = S.self_email_url,\n    T.self_phone_url = S.self_phone_url,\n\n    T.events_url = S.events_url,\n    T.funnel_url = S.funnel_url,\n\n    T.created_at = S.created_at,\n    T.last_conversion_date = S.last_conversion_date,\n\n    T.cf_ja_e_cliente_demo = S.cf_ja_e_cliente_demo,\n    T.cf_ferramenta = S.cf_ferramenta,\n    T.cf_procura = S.cf_procura,\n    T.cf_origem_do_lead_legado = S.cf_origem_do_lead_legado,\n    T.cf_agendamento = S.cf_agendamento,\n    T.cf_origem_do_lead = S.cf_origem_do_lead,\n    T.cf_mensagem = S.cf_mensagem,\n\n    T.cf_qual_produto_da_demo_mais_te_interessou =\n        S.cf_qual_produto_da_demo_mais_te_interessou,\n\n    T.cf_url_do_arquivo = S.cf_url_do_arquivo,\n    T.cf_informacao_importante = S.cf_informacao_importante,\n    T.cf_canal = S.cf_canal,\n    T.cf_cargo = S.cf_cargo,\n    T.cf_consultor_a = S.cf_consultor_a,\n\n    T.cf_voce_ja_conhece_a_demo =\n        S.cf_voce_ja_conhece_a_demo,\n\n    T.cf_obs = S.cf_obs,\n    T.cf_segmentos = S.cf_segmentos,\n    T.cf_totem_segmento = S.cf_totem_segmento,\n    T.cf_hub_id_do_registro = S.cf_hub_id_do_registro,\n    T.cf_observacao_hub = S.cf_observacao_hub,\n\n    T.dt_atualizacao = SYSUTCDATETIME()\n\nWHEN NOT MATCHED THEN\n\nINSERT\n(\n    uuid,\n\n    name,\n    email,\n\n    phone,\n    personal_phone,\n    mobile_phone,\n\n    job_title,\n    birthdate,\n\n    bio,\n    website,\n\n    city,\n    state,\n    country,\n\n    twitter,\n    facebook,\n    linkedin,\n\n    tags,\n    extra_emails,\n\n    legal_basis_category,\n    legal_basis_type,\n    legal_basis_status,\n\n    self_uuid_url,\n    self_email_url,\n    self_phone_url,\n\n    events_url,\n    funnel_url,\n\n    created_at,\n    last_conversion_date,\n\n    cf_ja_e_cliente_demo,\n    cf_ferramenta,\n    cf_procura,\n    cf_origem_do_lead_legado,\n    cf_agendamento,\n    cf_origem_do_lead,\n    cf_mensagem,\n    cf_qual_produto_da_demo_mais_te_interessou,\n    cf_url_do_arquivo,\n    cf_informacao_importante,\n    cf_canal,\n    cf_cargo,\n    cf_consultor_a,\n    cf_voce_ja_conhece_a_demo,\n    cf_obs,\n    cf_segmentos,\n    cf_totem_segmento,\n    cf_hub_id_do_registro,\n    cf_observacao_hub\n)\n\nVALUES\n(\n    S.uuid,\n\n    S.name,\n    S.email,\n\n    S.phone,\n    S.personal_phone,\n    S.mobile_phone,\n\n    S.job_title,\n    S.birthdate,\n\n    S.bio,\n    S.website,\n\n    S.city,\n    S.state,\n    S.country,\n\n    S.twitter,\n    S.facebook,\n    S.linkedin,\n\n    S.tags,\n    S.extra_emails,\n\n    S.legal_basis_category,\n    S.legal_basis_type,\n    S.legal_basis_status,\n\n    S.self_uuid_url,\n    S.self_email_url,\n    S.self_phone_url,\n\n    S.events_url,\n    S.funnel_url,\n\n    S.created_at,\n    S.last_conversion_date,\n\n    S.cf_ja_e_cliente_demo,\n    S.cf_ferramenta,\n    S.cf_procura,\n    S.cf_origem_do_lead_legado,\n    S.cf_agendamento,\n    S.cf_origem_do_lead,\n    S.cf_mensagem,\n    S.cf_qual_produto_da_demo_mais_te_interessou,\n    S.cf_url_do_arquivo,\n    S.cf_informacao_importante,\n    S.cf_canal,\n    S.cf_cargo,\n    S.cf_consultor_a,\n    S.cf_voce_ja_conhece_a_demo,\n    S.cf_obs,\n    S.cf_segmentos,\n    S.cf_totem_segmento,\n    S.cf_hub_id_do_registro,\n    S.cf_observacao_hub\n);\n\nSELECT\n    @@ROWCOUNT AS total_processado,\n    SYSUTCDATETIME() AS dt_processamento;\n`;\n\nreturn [\n  {\n    json: {\n      quantidade: registros.length,\n      query\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -176
+      ],
+      "id": "7eabee84-74d9-4947-a440-74199fa1e08f",
+      "name": "Gerar SQL"
+    },
+    {
+      "parameters": {
+        "content": "## Contatos\nNormalização e persistência por UUID. SQL utiliza OPENJSON, ROW_NUMBER e MERGE.",
+        "height": 560,
+        "width": 288,
+        "color": "#0D0D0D"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -288
+      ],
+      "id": "004b3f21-7424-40cd-8acf-8bf395c342e0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "demo-rdstation-conversions",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -48
+      ],
+      "id": "c3bb8915-8277-40ec-a459-e322c74c2156",
+      "name": "rd_contacts_azure"
+    },
+    {
+      "parameters": {
+        "content": "## Entrada\nWebhook de conversão do RD Station. Configure um novo destino no seu ambiente de teste.",
+        "height": 288,
+        "width": 624,
+        "color": "#0D0C0C"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -288
+      ],
+      "id": "eefdf3b4-ae4b-4129-811e-b3b29ecc2d6a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Eventos\nDeduplicação local e chave composta; persistência por hash SHA2_256.",
+        "height": 560,
+        "width": 256,
+        "color": "#0D0D0D"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -288
+      ],
+      "id": "58afbbdb-6caf-4a3d-b4cb-abf9810034ce",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        -128
+      ],
+      "id": "f4cfd8cc-441d-464d-acf4-b5ef812d2219",
+      "name": "Insert - SQL AZURE - Contatos",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const leads = $json.body?.leads ?? [];\n\nconst resultado = [];\nconst chaves = new Set();\n\nfor (const lead of leads) {\n\n  const uuid = String(lead.uuid ?? '')\n    .trim()\n    .toLowerCase();\n\n  if (!uuid) continue;\n\n  const conversao = lead.last_conversion;\n\n  if (!conversao) continue;\n\n  const content = conversao.content ?? {};\n  const original = content.__cdp__original_event ?? {};\n\n  const eventType =\n    original.event_type ??\n    content.event_type ??\n    'CONVERSION';\n\n  const eventFamily =\n    original.event_family ??\n    'CDP';\n\n  const eventIdentifier =\n    original.event_identifier ??\n    content.event_identifier ??\n    content.conversion_identifier ??\n    content.identificador ??\n    conversao.source ??\n    null;\n\n  // IMPORTANTE:\n  // prioriza a data externa da conversão,\n  // que é a mesma utilizada no histórico\n  const eventTimestamp =\n    conversao.created_at ??\n    original.event_timestamp ??\n    content.event_timestamp ??\n    content.created_at ??\n    null;\n\n  const email =\n    String(\n      original.payload?.email ??\n      content.email_lead ??\n      lead.email ??\n      ''\n    )\n      .trim()\n      .toLowerCase() || null;\n\n  if (!eventIdentifier || !eventTimestamp) {\n    continue;\n  }\n\n  // Se existir payload CDP usa ele.\n  // Caso contrário monta o payload com os dados do webhook.\n  const payload =\n  original.payload ??\n  {\n    name:\n      content.nome ??\n      content.Nome ??\n      lead.name ??\n      null,\n\n    email:\n      content.email_lead ??\n      lead.email ??\n      null,\n\n    company_name:\n      content.empresa ??\n      content.Empresa ??\n      lead.company ??\n      null,\n\n    personal_phone:\n      content.telefone ??\n      content.Telefone ??\n      lead.personal_phone ??\n      lead.phone ??\n      null,\n\n    job_title:\n      content.cargo ??\n      content.Cargo ??\n      lead.job_title ??\n      null,\n\n    conversion_identifier:\n      content.conversion_identifier ??\n      content.event_identifier ??\n      content.identificador ??\n      null,\n\n    traffic_source:\n      content.traffic_source ??\n      null,\n\n    traffic_medium:\n      content.traffic_medium ??\n      null,\n\n    traffic_campaign:\n      content.traffic_campaign ??\n      null,\n\n    traffic_channel:\n      content.traffic_channel ??\n      null,\n\n    traffic_term:\n      content.traffic_term ??\n      null\n  };\n\n  const eventKeySource = [\n    uuid,\n    eventType,\n    eventIdentifier,\n    eventTimestamp\n  ].join('|');\n\n  if (chaves.has(eventKeySource)) {\n    continue;\n  }\n\n  chaves.add(eventKeySource);\n\n  resultado.push({\n    json: {\n      contact_uuid: uuid,\n      contact_email: email,\n\n      event_type: eventType,\n      event_family: eventFamily,\n      event_identifier: eventIdentifier,\n      event_timestamp: eventTimestamp,\n      traffic_source: payload.traffic_source ?? null,\n      event_key_source: eventKeySource,\n      payload_json: JSON.stringify(payload)\n    }\n  });\n}\n\nreturn resultado;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        96
+      ],
+      "id": "f8e5e344-f947-4faa-b155-10e96d17bfb8",
+      "name": "Normalizar Eventos"
+    },
+    {
+      "parameters": {
+        "jsCode": "const registros = $input.all().map(item => item.json);\n\nif (registros.length === 0) {\n  return [];\n}\n\nconst json = JSON.stringify(registros)\n  .replace(/'/g, \"''\");\n\nconst query = `\nDECLARE @json NVARCHAR(MAX) = N'${json}';\n\n;WITH RawData AS\n(\n    SELECT *\n    FROM OPENJSON(@json)\n    WITH\n    (\n        contact_uuid NVARCHAR(100) '$.contact_uuid',\n        contact_email NVARCHAR(500) '$.contact_email',\n\n        event_type NVARCHAR(100) '$.event_type',\n        event_family NVARCHAR(100) '$.event_family',\n        event_identifier NVARCHAR(500) '$.event_identifier',\n        event_timestamp NVARCHAR(100) '$.event_timestamp',\n\n        event_key_source NVARCHAR(MAX) '$.event_key_source',\n\n        traffic_source NVARCHAR(1000) '$.traffic_source',\n        traffic_medium NVARCHAR(255) '$.traffic_medium',\n        traffic_campaign NVARCHAR(1000) '$.traffic_campaign',\n\n        payload_json NVARCHAR(MAX) '$.payload_json'\n    )\n),\n\nSourceData AS\n(\n    SELECT\n        TRY_CONVERT(UNIQUEIDENTIFIER, contact_uuid) AS contact_uuid,\n\n        LOWER(LTRIM(RTRIM(contact_email))) AS contact_email,\n\n        event_type,\n        event_family,\n        event_identifier,\n\n        TRY_CONVERT(\n            DATETIMEOFFSET(3),\n            event_timestamp\n        ) AS event_timestamp,\n\n        traffic_source,\n        traffic_medium,\n        traffic_campaign,\n\n        HASHBYTES(\n            'SHA2_256',\n            event_key_source\n        ) AS event_key,\n\n        payload_json\n\n    FROM RawData\n)\n\nMERGE [Landing].[RD_Eventos_Contato] AS T\n\nUSING\n(\n    SELECT *\n    FROM SourceData\n    WHERE\n        contact_uuid IS NOT NULL\n        AND event_timestamp IS NOT NULL\n) AS S\n\nON T.event_key = S.event_key\n\nWHEN MATCHED THEN\nUPDATE SET\n\n    T.contact_uuid = S.contact_uuid,\n    T.contact_email = S.contact_email,\n\n    T.event_type = S.event_type,\n    T.event_family = S.event_family,\n    T.event_identifier = S.event_identifier,\n    T.event_timestamp = S.event_timestamp,\n\n    T.traffic_source = S.traffic_source,\n    T.traffic_medium = S.traffic_medium,\n    T.traffic_campaign = S.traffic_campaign,\n\n    T.payload_json = S.payload_json,\n\n    T.dt_atualizacao = SYSUTCDATETIME()\n\nWHEN NOT MATCHED THEN\n\nINSERT\n(\n    contact_uuid,\n    contact_email,\n\n    event_type,\n    event_family,\n    event_identifier,\n    event_timestamp,\n\n    traffic_source,\n    traffic_medium,\n    traffic_campaign,\n\n    payload_json,\n    event_key\n)\n\nVALUES\n(\n    S.contact_uuid,\n    S.contact_email,\n\n    S.event_type,\n    S.event_family,\n    S.event_identifier,\n    S.event_timestamp,\n\n    S.traffic_source,\n    S.traffic_medium,\n    S.traffic_campaign,\n\n    S.payload_json,\n    S.event_key\n);\n\nSELECT\n    @@ROWCOUNT AS total_processado,\n    SYSUTCDATETIME() AS dt_processamento;\n`;\n\nreturn [\n  {\n    json: {\n      quantidade: registros.length,\n      query\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        96
+      ],
+      "id": "0cce8e78-2bba-497e-9f32-cc0fc463574f",
+      "name": "Gerar SQL - Lote "
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        64
+      ],
+      "id": "1b46a224-4446-4c1a-b9ef-e775f72f2b2a",
+      "name": "Insert - SQL AZURE - Contatos eventos",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Sincronização\nMerge combina os resultados dos dois ramos por posição. Não equivale a transação SQL.",
+        "height": 256,
+        "width": 624,
+        "color": "#0D0D0D"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        16
+      ],
+      "id": "88bded19-4598-454c-bae4-b8d0c7b1ad1d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        720,
+        -64
+      ],
+      "id": "6f3e1009-cfab-4221-88d8-034c270d6dfa",
+      "name": "Merge",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "resume": "timeInterval",
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        -64
+      ],
+      "id": "d33bc0c9-3e55-46ba-89f8-243ad3957bb0",
+      "name": "Wait"
+    },
+    {
+      "parameters": {
+        "content": "## Power BI\nEspera de 30 segundos, token Microsoft e solicitação de refresh. Integrações desabilitadas no template público.",
+        "height": 560,
+        "width": 368,
+        "color": "#0D0D0D"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -288
+      ],
+      "id": "8e0b2e56-582a-483e-810e-23a9de97a752",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.powerbi.com/v1.0/myorg/groups/CONFIGURE_WORKSPACE_ID/datasets/CONFIGURE_DATASET_ID/refreshes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$json.access_token}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        112
+      ],
+      "id": "d61ba9e3-ad41-4cb7-a4d1-260e47ec4f8f",
+      "name": "Refresh - PAINEL",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://login.microsoftonline.com/CONFIGURE_TENANT_ID/oauth2/v2.0/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "CONFIGURE_CLIENT_ID"
+            },
+            {
+              "name": "client_secret",
+              "value": "CONFIGURE_CLIENT_SECRET_PRIVATELY"
+            },
+            {
+              "name": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "name": "scope",
+              "value": "https://analysis.windows.net/powerbi/api/.default"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        720,
+        112
+      ],
+      "id": "d1690f58-2633-4506-a7f9-6aaaff42e455",
+      "name": "Obter Token",
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Normalizar Contatos": {
+      "main": [
+        [
+          {
+            "node": "Gerar SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar SQL": {
+      "main": [
+        [
+          {
+            "node": "Insert - SQL AZURE - Contatos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rd_contacts_azure": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Eventos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Normalizar Contatos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert - SQL AZURE - Contatos": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Eventos": {
+      "main": [
+        [
+          {
+            "node": "Gerar SQL - Lote ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar SQL - Lote ": {
+      "main": [
+        [
+          {
+            "node": "Insert - SQL AZURE - Contatos eventos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert - SQL AZURE - Contatos eventos": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Obter Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obter Token": {
+      "main": [
+        [
+          {
+            "node": "Refresh - PAINEL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
