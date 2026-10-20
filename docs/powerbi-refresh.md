@@ -18,6 +18,6 @@ O nó Refresh possui onError: continueRegularOutput no original e no template. P
 
 Validar acesso da aplicação ao workspace, permissões e configurações do serviço para o cenário. Confirmar capacidade, limites de refresh, conectividade SQL e monitoramento. Este case não promete eliminar limites de atualização, operar em tempo real ou funcionar indefinidamente sem manutenção.
 
-A observação do autor de aproximadamente 60 segundos depende do ambiente e do que foi medido; a espera isolada não comprova a duração completa.
+O tempo de aproximadamente 60 segundos que observei depende do ambiente e da etapa considerada; a espera isolada não comprova a duração completa.
 
 Token e refresh permanecem desabilitados na distribuição pública.
