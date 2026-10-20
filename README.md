@@ -38,9 +38,8 @@ O **Merge do n8n** reúne as saídas dos dois ramos. O **MERGE SQL** identifica 
 
 ## Screenshots
 
-![Espaço reservado para o workflow](assets/screenshots/preview.svg)
+![Automação de envio de conversões e eventos para Microsoft Azure](assets/screenshots/Enviar%20convers%C3%B5es%20e%20eventos%20para%20Microsoft%20Azure.png)
 
-Adicione uma captura sem dados internos em `assets/screenshots/` e informe o nome para conectar ao README.
 
 ## Template e código
 
